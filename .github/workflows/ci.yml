@@ -12,8 +12,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -21,7 +19,10 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # No pnpm-lock.yaml is committed yet (scaffolded without a local
+        # Node/pnpm install available) — switch this to --frozen-lockfile
+        # once a real lockfile is committed, for reproducible installs.
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         run: pnpm lint
