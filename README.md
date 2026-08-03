@@ -3,6 +3,10 @@
 Wholesale garlic/ginger/onion marketplace connecting MVBB (Guntur), its
 delivery drivers, and its B2B/B2C buyers.
 
+> This repo started as a prototype to understand business requirements
+> end-to-end; it is now the production monorepo re-platforming that
+> prototype's validated logic onto a real backend.
+
 This is the production monorepo, re-platforming the validated prototype
 (`mvbb-app.jsx`, not committed here) onto a real backend. See
 `MVBB-Roadmap.docx` (kept outside this repo) for the full phased plan; the
