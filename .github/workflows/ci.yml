@@ -16,7 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          # cache: pnpm requires a committed pnpm-lock.yaml — re-enable once
+          # one exists (run `pnpm install` locally and commit the lockfile).
 
       - name: Install dependencies
         # No pnpm-lock.yaml is committed yet (scaffolded without a local
