@@ -1,0 +1,45 @@
+name: Feature / roadmap item
+description: A feature to build, ported from the prototype or new work
+labels: ["type:feature"]
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Roadmap phase
+      options:
+        - "phase-1 (parity)"
+        - "phase-2 (pilot-ready)"
+        - "phase-3 (production hardening)"
+    validations:
+      required: true
+  - type: dropdown
+    id: app
+    attributes:
+      label: App / package
+      multiple: true
+      options:
+        - "app:admin"
+        - "app:customer"
+        - "app:driver"
+        - "pkg:pricing"
+        - "pkg:inventory"
+        - "pkg:orders"
+        - "pkg:khata"
+        - "pkg:dispatch"
+        - "pkg:ui"
+        - "backend:supabase"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs to be built
+      description: Reference the relevant prototype screen/function (mvbb-app.jsx line range) if porting existing logic.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: false

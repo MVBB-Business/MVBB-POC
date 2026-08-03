@@ -1,0 +1,33 @@
+name: Bug
+description: Something is broken
+labels: ["type:bug"]
+body:
+  - type: dropdown
+    id: app
+    attributes:
+      label: App / package
+      options:
+        - "app:admin"
+        - "app:customer"
+        - "app:driver"
+        - "pkg:pricing"
+        - "pkg:inventory"
+        - "pkg:orders"
+        - "pkg:khata"
+        - "pkg:dispatch"
+        - "pkg:ui"
+        - "backend:supabase"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behavior
+    validations:
+      required: true
