@@ -8,7 +8,14 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@mvbb/inventory": "*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0"
+  },
   "devDependencies": {
+    "@types/react": "^18.3.0",
     "typescript": "^5.5.0"
   }
 }
