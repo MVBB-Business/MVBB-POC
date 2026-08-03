@@ -6,10 +6,10 @@ on:
     branches: [main]
 
 jobs:
-  # Every PR must reference a ticket (MVBB-<issue number>) in its title and
-  # in every commit message on the branch — mirrors the [MVBB-N] convention
-  # used on GitHub issue titles. Required check on main (see branch
-  # protection) — a PR without a ticket ID cannot merge.
+  # Every PR title and every commit message on the branch must start with a
+  # ticket prefix like "[MVBB-1] " — mirrors the [MVBB-N] convention used on
+  # GitHub issue titles. Required check on main (see branch protection) — a
+  # PR that doesn't follow this cannot merge.
   ticket-check:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -18,22 +18,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check PR title has a ticket ID
+      - name: Check PR title starts with a ticket ID
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          echo "$PR_TITLE" | grep -qE 'MVBB-[0-9]+' || {
-            echo "::error::PR title must include a ticket ID like [MVBB-1]. Got: $PR_TITLE"
+          echo "$PR_TITLE" | grep -qE '^\[MVBB-[0-9]+\] ' || {
+            echo "::error::PR title must start with a ticket ID like '[MVBB-1] '. Got: $PR_TITLE"
             exit 1
           }
 
-      - name: Check every commit message has a ticket ID
+      - name: Check every commit message starts with a ticket ID
         run: |
           base="origin/${{ github.event.pull_request.base.ref }}"
           missing=0
           while IFS= read -r line; do
-            if ! echo "$line" | grep -qE 'MVBB-[0-9]+'; then
-              echo "::error::Commit missing ticket ID: $line"
+            if ! echo "$line" | grep -qE '^\[MVBB-[0-9]+\] '; then
+              echo "::error::Commit must start with a ticket ID like '[MVBB-1] ': $line"
               missing=1
             fi
           done < <(git log --no-merges --format=%s "$base".."${{ github.event.pull_request.head.sha }}")
