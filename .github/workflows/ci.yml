@@ -6,6 +6,39 @@ on:
     branches: [main]
 
 jobs:
+  # Every PR must reference a ticket (MVBB-<issue number>) in its title and
+  # in every commit message on the branch — mirrors the [MVBB-N] convention
+  # used on GitHub issue titles. Required check on main (see branch
+  # protection) — a PR without a ticket ID cannot merge.
+  ticket-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title has a ticket ID
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "$PR_TITLE" | grep -qE 'MVBB-[0-9]+' || {
+            echo "::error::PR title must include a ticket ID like [MVBB-1]. Got: $PR_TITLE"
+            exit 1
+          }
+
+      - name: Check every commit message has a ticket ID
+        run: |
+          base="origin/${{ github.event.pull_request.base.ref }}"
+          missing=0
+          while IFS= read -r line; do
+            if ! echo "$line" | grep -qE 'MVBB-[0-9]+'; then
+              echo "::error::Commit missing ticket ID: $line"
+              missing=1
+            fi
+          done < <(git log --format=%s "$base"..HEAD)
+          exit $missing
+
   ci:
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +64,23 @@ jobs:
 
       - name: Test
         run: npm run test
+
+  # Inactive until SONAR_TOKEN is added as a repo secret (see
+  # sonar-project.properties for the org/project key to fill in once the
+  # SonarCloud project exists). Once active, add "sonar" to the required
+  # status checks in branch protection alongside ci and ticket-check.
+  sonar:
+    if: ${{ secrets.SONAR_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # Deploy jobs only run on push to main, after CI passes, and only if
   # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
