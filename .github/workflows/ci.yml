@@ -65,18 +65,26 @@ jobs:
       - name: Test
         run: npm run test
 
-  # Inactive until SONAR_TOKEN is added as a repo secret (see
-  # sonar-project.properties for the org/project key to fill in once the
-  # SonarCloud project exists). Once active, add "sonar" to the required
-  # status checks in branch protection alongside ci and ticket-check.
+  # Skips itself (green, non-blocking) until SONAR_TOKEN is added as a repo
+  # secret (see sonar-project.properties for the org/project key to fill in
+  # once the SonarCloud project exists). Job-level `if` can't reference
+  # `secrets` directly, so the check happens in a step instead.
   sonar:
-    if: ${{ secrets.SONAR_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Check for Sonar token
+        id: check
+        run: |
+          if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: SonarCloud Scan
+        if: steps.check.outputs.skip == 'false'
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
