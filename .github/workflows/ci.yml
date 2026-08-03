@@ -11,28 +11,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # cache: pnpm requires a committed pnpm-lock.yaml — re-enable once
-          # one exists (run `pnpm install` locally and commit the lockfile).
 
       - name: Install dependencies
-        # No pnpm-lock.yaml is committed yet (scaffolded without a local
-        # Node/pnpm install available) — switch this to --frozen-lockfile
-        # once a real lockfile is committed, for reproducible installs.
-        run: pnpm install --no-frozen-lockfile
+        # Using npm workspaces (not pnpm) — pnpm's registry client hit a
+        # persistent ERR_INVALID_THIS bug against Vercel's build network
+        # (reproduced on both Node 20.x and 24.x, and via corepack too), so
+        # npm is the install/build tool for this monorepo until that's
+        # resolved upstream.
+        run: npm install
 
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: npm run typecheck
 
       - name: Test
-        run: pnpm test
+        run: npm run test
 
   # Deploy jobs only run on push to main, after CI passes, and only if
   # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
@@ -41,9 +39,9 @@ jobs:
   # MVBB-Roadmap for when that changes).
   #
   # Deploy MUST run from the repo root, not from inside apps/<name> — Vercel
-  # needs the whole pnpm workspace uploaded to resolve the `workspace:*`
-  # deps in each app's package.json (e.g. @mvbb/ui). Which project a given
-  # job targets is selected via VERCEL_PROJECT_ID, not by cwd.
+  # needs the whole npm workspace uploaded to resolve each app's local
+  # @mvbb/* deps (see root package.json "workspaces"). Which project a
+  # given job targets is selected via VERCEL_PROJECT_ID, not by cwd.
   deploy-admin:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

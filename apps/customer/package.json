@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mvbb/pricing": "workspace:*",
-    "@mvbb/inventory": "workspace:*",
-    "@mvbb/orders": "workspace:*",
-    "@mvbb/ui": "workspace:*",
+    "@mvbb/pricing": "*",
+    "@mvbb/inventory": "*",
+    "@mvbb/orders": "*",
+    "@mvbb/ui": "*",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

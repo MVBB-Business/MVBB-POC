@@ -2,7 +2,11 @@
   "name": "mvbb",
   "private": true,
   "version": "0.0.1",
-  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/domain/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

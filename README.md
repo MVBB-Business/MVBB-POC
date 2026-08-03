@@ -46,15 +46,16 @@ apps and packages should not need to change shape to accommodate growth.
 
 ## Getting started
 
-Requires Node.js and pnpm (neither could be verified as installed in the
-environment this scaffold was generated in — install both before running
-anything below).
+Requires Node.js. Uses npm workspaces (not pnpm) for install/build — pnpm's
+registry client hit a persistent `ERR_INVALID_THIS` bug against Vercel's
+build network, reproduced on both Node 20.x and 24.x and via corepack, so
+CI/CD and Vercel both use plain npm until that's resolved upstream.
 
 ```bash
-pnpm install
-pnpm dev       # runs all apps in parallel via turbo
-pnpm test      # runs domain package tests (vitest)
-pnpm typecheck
+npm install
+npm run dev        # runs all apps in parallel via turbo
+npm run test       # runs domain package tests (vitest)
+npm run typecheck
 ```
 
 ## Status
