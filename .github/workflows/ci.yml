@@ -36,8 +36,14 @@ jobs:
 
   # Deploy jobs only run on push to main, after CI passes, and only if
   # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
-  # Vercel project, deployed to its own *.vercel.app URL (no custom domain
-  # configured — see MVBB-Roadmap for when that changes).
+  # Vercel project (Root Directory set per-project to its apps/* folder),
+  # deployed to its own *.vercel.app URL (no custom domain configured — see
+  # MVBB-Roadmap for when that changes).
+  #
+  # Deploy MUST run from the repo root, not from inside apps/<name> — Vercel
+  # needs the whole pnpm workspace uploaded to resolve the `workspace:*`
+  # deps in each app's package.json (e.g. @mvbb/ui). Which project a given
+  # job targets is selected via VERCEL_PROJECT_ID, not by cwd.
   deploy-admin:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -45,9 +51,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy apps/admin to Vercel
-        working-directory: apps/admin
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_u1kXQBF80ZglmGhfNdDlhY9E
+          VERCEL_PROJECT_ID: prj_pYhnU6kGhub42BGS80czFWzXMWJI
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-customer:
@@ -57,9 +64,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy apps/customer to Vercel
-        working-directory: apps/customer
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_u1kXQBF80ZglmGhfNdDlhY9E
+          VERCEL_PROJECT_ID: prj_rnDnX3ywQKiS5qi3hp5eZyD1qRA7
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-driver:
@@ -69,7 +77,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy apps/driver to Vercel
-        working-directory: apps/driver
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_u1kXQBF80ZglmGhfNdDlhY9E
+          VERCEL_PROJECT_ID: prj_zStUxvAUkGC5xJ7fmVZW9wbykaLb
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
