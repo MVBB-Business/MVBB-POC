@@ -1,0 +1,37 @@
+/*
+ * Ported verbatim from mvbb-app.jsx THEME_CSS (prototype lines ~25-41).
+ * These are the only color values that should exist in the app — everything
+ * else should reference the CSS custom properties below via tokens.ts.
+ */
+.mvbb-root {
+  --c-garlic: #1f3d2b;
+  --c-garlicLight: #345940;
+  --c-paper: #f6efdf;
+  --c-ivory: #fffcf5;
+  --c-card: #fffcf5;
+  --c-ink: #1f3d2b;
+  --c-gold: #c1653d;
+  --c-goldDark: #9b4e2e;
+  --c-earth: #8b7355;
+  --c-green: #5c8a52;
+  --c-rust: #b23a2e;
+  --c-line: #e3d6be;
+  --c-muted: #948572;
+  --c-white: #ffffff;
+}
+.mvbb-root.dark {
+  --c-paper: #1c2b23;
+  --c-card: #243320;
+  --c-ink: #ede8df;
+  --c-earth: #beb09a;
+  --c-line: #34473a;
+  --c-muted: #8fa898;
+  --c-garlic: #2c4a35;
+  --c-garlicLight: #3a5e43;
+  --c-gold: #d9764b;
+  --c-goldDark: #e8996b;
+  --c-green: #88c277;
+  --c-rust: #d97757;
+  --c-ivory: #ede8df;
+  --c-white: #ede8df;
+}
