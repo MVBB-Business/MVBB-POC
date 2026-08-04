@@ -4,20 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { C } from "@mvbb/ui";
+import { ordersForPhone, useOrders } from "../../lib/orders-context";
 import { useProfile } from "../../lib/profile-context";
 
-const MENU_ITEMS = [
-  { href: "/addresses", label: "Manage addresses", count: (p: { addresses: unknown[] }) => p.addresses.length },
-  { href: "/payment-methods", label: "Payment methods", count: (p: { paymentMethods: unknown[] }) => p.paymentMethods.length },
-] as const;
-
 // Ported from mvbb-app.jsx ProfileScreen (prototype lines ~867-890). The
-// full menu also lists Orders/Negotiations/Wishlist/Billing — those screens
-// are follow-up PRs against this same issue and will be added to MENU_ITEMS
-// as they land, rather than linking out to routes that don't exist yet.
+// full menu also lists Negotiations/Wishlist — those screens are follow-up
+// PRs against this same issue and will be added to MENU_ITEMS as they land,
+// rather than linking out to routes that don't exist yet.
 export default function ProfilePage() {
   const router = useRouter();
   const { profile, loaded, logout } = useProfile();
+  const { orders } = useOrders();
   // Suppresses the redirect-guard below during the logout click: logging
   // out clears `profile` while this page is still mounted, which would
   // otherwise race the effect's router.replace("/login") against the
@@ -30,6 +27,14 @@ export default function ProfilePage() {
   }, [loaded, profile, router]);
 
   if (!profile) return null;
+
+  const myOrderCount = ordersForPhone(orders, profile.phone).length;
+  const menuItems = [
+    { href: "/orders", label: "My orders", count: myOrderCount },
+    { href: "/billing", label: "Billing & invoices", count: null },
+    { href: "/addresses", label: "Manage addresses", count: profile.addresses.length },
+    { href: "/payment-methods", label: "Payment methods", count: profile.paymentMethods.length },
+  ];
 
   return (
     <main style={{ background: C.paper, minHeight: "100vh" }}>
@@ -81,7 +86,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {MENU_ITEMS.map((item) => (
+        {menuItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -100,9 +105,11 @@ export default function ProfilePage() {
             }}
           >
             <span>{item.label}</span>
-            <span className="gb text-xs" style={{ color: C.muted }}>
-              {item.count(profile)}
-            </span>
+            {item.count !== null && (
+              <span className="gb text-xs" style={{ color: C.muted }}>
+                {item.count}
+              </span>
+            )}
           </Link>
         ))}
 

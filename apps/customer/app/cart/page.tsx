@@ -7,6 +7,7 @@ import { inr } from "@mvbb/pricing";
 import { C } from "@mvbb/ui";
 import { useCart } from "../../lib/cart-context";
 import { computeTotals, resolveCartLines } from "../../lib/cart-totals";
+import { SummaryRow } from "../../lib/summary-row";
 import { useGrades } from "../../lib/use-grades";
 
 const WELCOME_CODE = "WELCOME5";
@@ -197,11 +198,11 @@ export default function CartPage() {
           </div>
 
           <div style={{ borderRadius: 16, padding: 16, marginTop: 12, background: C.garlic }}>
-            <SummaryRow label="Subtotal" value={inr(totals.subtotal)} />
-            {totals.discount > 0 && <SummaryRow label="Discount" value={`−${inr(totals.discount)}`} />}
-            <SummaryRow label="Delivery" value={inr(totals.delivery)} />
+            <SummaryRow label="Subtotal" value={inr(totals.subtotal)} light />
+            {totals.discount > 0 && <SummaryRow label="Discount" value={`−${inr(totals.discount)}`} light />}
+            <SummaryRow label="Delivery" value={inr(totals.delivery)} light />
             <div style={{ borderTop: `1px solid ${C.garlicLight}`, margin: "8px 0" }} />
-            <SummaryRow label="Total" value={inr(totals.total)} bold />
+            <SummaryRow label="Total" value={inr(totals.total)} bold light />
           </div>
 
           <button
@@ -224,18 +225,5 @@ export default function CartPage() {
         </div>
       )}
     </main>
-  );
-}
-
-function SummaryRow({ label, value, bold }: Readonly<{ label: string; value: string; bold?: boolean }>) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 0" }}>
-      <span className="gb text-sm" style={{ color: C.ivory }}>
-        {label}
-      </span>
-      <span className={bold ? "gm text-base font-bold" : "gb text-sm"} style={{ color: C.ivory }}>
-        {value}
-      </span>
-    </div>
   );
 }
