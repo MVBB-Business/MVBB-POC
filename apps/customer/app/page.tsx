@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { deriveStock } from "@mvbb/inventory";
 import { inr, tierPrice } from "@mvbb/pricing";
@@ -14,10 +15,9 @@ const SORT_OPTIONS: [SortKey, string][] = [
   ["priceHigh", "Price ↓"],
 ];
 
-// Ported from mvbb-app.jsx HomeScreen (prototype lines ~368-431). Cart,
-// wishlist, and navigation to a product detail screen are left for a
-// follow-up PR — this slice covers browse/search/filter/sort against real
-// catalog data through the shared pricing/inventory packages.
+// Ported from mvbb-app.jsx HomeScreen (prototype lines ~368-431). Wishlist
+// is left for a follow-up PR (needs the login/profile system) — this slice
+// covers browse/search/filter/sort plus navigation into product detail.
 export default function HomePage() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("bestSeller");
@@ -127,9 +127,17 @@ export default function HomePage() {
             const stock = deriveStock(g.stockBags);
             const price = tierPrice(g, g.tiers[0].min);
             return (
-              <div
+              <Link
                 key={g.id}
-                style={{ borderRadius: 16, padding: 12, background: C.card, border: `1px solid ${C.line}` }}
+                href={`/product/${g.id}`}
+                style={{
+                  display: "block",
+                  borderRadius: 16,
+                  padding: 12,
+                  background: C.card,
+                  border: `1px solid ${C.line}`,
+                  textDecoration: "none",
+                }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <p className="gd text-base font-semibold" style={{ color: C.ink, margin: 0 }}>
@@ -175,7 +183,7 @@ export default function HomePage() {
                   </span>
                   <StockBadge stock={stock} />
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
