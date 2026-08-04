@@ -42,6 +42,13 @@ export default function ProductDetailPage() {
     setTimeout(() => setAdded(false), 2200);
   }
 
+  let addToCartLabel = "Add to cart";
+  if (stock === "out") {
+    addToCartLabel = "Sold out";
+  } else if (added) {
+    addToCartLabel = "Added ✓";
+  }
+
   return (
     <main style={{ background: C.paper, minHeight: "100vh" }}>
       <div style={{ padding: 16 }}>
@@ -162,6 +169,7 @@ export default function ProductDetailPage() {
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button
+                type="button"
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 aria-label="Decrease quantity"
                 className="gb text-sm font-semibold"
@@ -173,6 +181,7 @@ export default function ProductDetailPage() {
                 {qty}
               </span>
               <button
+                type="button"
                 onClick={() => setQty((q) => q + 1)}
                 aria-label="Increase quantity"
                 className="gb text-sm font-semibold"
@@ -197,6 +206,7 @@ export default function ProductDetailPage() {
         </p>
 
         <button
+          type="button"
           onClick={handleAddToCart}
           disabled={stock === "out"}
           className="gb text-sm font-semibold"
@@ -210,7 +220,7 @@ export default function ProductDetailPage() {
             cursor: stock === "out" ? "not-allowed" : "pointer",
           }}
         >
-          {stock === "out" ? "Sold out" : added ? "Added ✓" : "Add to cart"}
+          {addToCartLabel}
         </button>
       </div>
     </main>

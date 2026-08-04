@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export interface CartLine {
   gradeId: string;
@@ -17,7 +17,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "mvbb_customer_cart";
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -40,7 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [lines, loaded]);
 
-  function addToCart(gradeId: string, qty: number) {
+  const addToCart = useCallback((gradeId: string, qty: number) => {
     setLines((prev) => {
       const i = prev.findIndex((l) => l.gradeId === gradeId);
       if (i >= 0) {
@@ -50,13 +50,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { gradeId, qty }];
     });
-  }
+  }, []);
 
   const count = useMemo(() => lines.reduce((s, l) => s + l.qty, 0), [lines]);
 
-  return (
-    <CartContext.Provider value={{ lines, count, addToCart }}>{children}</CartContext.Provider>
-  );
+  const value = useMemo(() => ({ lines, count, addToCart }), [lines, count, addToCart]);
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
