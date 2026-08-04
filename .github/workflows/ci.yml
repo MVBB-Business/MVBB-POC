@@ -14,7 +14,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
         with:
           fetch-depth: 0
 
@@ -42,9 +42,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
 
@@ -65,30 +65,10 @@ jobs:
       - name: Test
         run: npm run test
 
-  # Skips itself (green, non-blocking) until SONAR_TOKEN is added as a repo
-  # secret (see sonar-project.properties for the org/project key to fill in
-  # once the SonarCloud project exists). Job-level `if` can't reference
-  # `secrets` directly, so the check happens in a step instead.
-  sonar:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Check for Sonar token
-        id: check
-        run: |
-          if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: SonarCloud Scan
-        if: steps.check.outputs.skip == 'false'
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  # SonarCloud runs via its own native GitHub App integration (Automatic
+  # Analysis), not a job here — running both at once conflicts (SonarCloud
+  # rejects CI-driven analysis while Automatic Analysis is on for the
+  # project). See the "SonarCloud Code Analysis" check on each PR.
 
   # Detects which app(s) actually need a rebuild: an app's own folder
   # changing, OR any shared package under packages/** changing (since every
@@ -102,8 +82,8 @@ jobs:
       customer: ${{ steps.filter.outputs.customer }}
       driver: ${{ steps.filter.outputs.driver }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.2
         id: filter
         with:
           filters: |
@@ -135,7 +115,7 @@ jobs:
     if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/admin to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -148,7 +128,7 @@ jobs:
     if: needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/customer to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -161,7 +141,7 @@ jobs:
     if: needs.changes.outputs.driver == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/driver to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
