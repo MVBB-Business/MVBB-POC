@@ -11,3 +11,9 @@ build/
 Thumbs.db
 coverage/
 .vercel/
+
+# Local claude-code skill installs (npx skills add) — not reviewed/vetted
+# for the whole team; add explicitly if/when needed.
+.agents/skills/
+.claude/skills/
+skills-lock.json
