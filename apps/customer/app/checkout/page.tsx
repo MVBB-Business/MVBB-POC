@@ -6,8 +6,17 @@ import { inr } from "@mvbb/pricing";
 import { C } from "@mvbb/ui";
 import { useCart } from "../../lib/cart-context";
 import { computeTotals, resolveCartLines } from "../../lib/cart-totals";
-import { useProfile } from "../../lib/profile-context";
+import { useOrders } from "../../lib/orders-context";
+import { useProfile, type PaymentMethod } from "../../lib/profile-context";
+import { SummaryRow } from "../../lib/summary-row";
 import { useGrades } from "../../lib/use-grades";
+
+function paymentLabel(payAtShop: boolean, method: PaymentMethod | null | undefined): string {
+  if (payAtShop || !method) return "Pay at shop";
+  if (method.type === "card") return `Card •••• ${method.detail}`;
+  if (method.type === "bank") return `Bank •••• ${method.detail}`;
+  return method.detail;
+}
 
 const SLOTS = ["Anytime", "Morning (8am–12pm)", "Afternoon (12pm–4pm)", "Evening (4pm–8pm)"];
 
@@ -22,11 +31,13 @@ const SLOTS = ["Anytime", "Morning (8am–12pm)", "Afternoon (12pm–4pm)", "Eve
 // that way until there's real auth to scope `customer_id` to the signed-in
 // user server-side. Writing a permissive insert policy now would let anyone
 // create orders as anyone, with client-computed totals. This screen instead
-// shows a local confirmation and clears the cart, matching the prototype's
-// own non-persistent (browser-local) storage model for Phase 1 demo parity.
+// saves the order via orders-context (browser-local, same model as
+// cart-context/profile-context) and clears the cart, matching the
+// prototype's own non-persistent storage model for Phase 1 demo parity.
 export default function CheckoutPage() {
   const { lines, coupon, clear } = useCart();
   const { profile } = useProfile();
+  const { placeOrder: saveOrder } = useOrders();
   const { grades, loading, error } = useGrades();
   const [addressId, setAddressId] = useState<string | null>(profile?.addresses[0]?.id ?? null);
   const [paymentId, setPaymentId] = useState<string | null>(
@@ -52,14 +63,33 @@ export default function CheckoutPage() {
   const totals = useMemo(() => computeTotals(lineDetails, coupon), [lineDetails, coupon]);
 
   const address = profile?.addresses.find((a) => a.id === addressId) ?? null;
-  const canPlace = Boolean(address) && (payAtShop || Boolean(paymentId)) && lineDetails.length > 0;
+  const paymentMethod = profile?.paymentMethods.find((m) => m.id === paymentId) ?? null;
+  const canPlace = Boolean(address) && (payAtShop || Boolean(paymentMethod)) && lineDetails.length > 0;
 
   function placeOrder() {
-    if (!canPlace) return;
+    if (!canPlace || !address || !profile) return;
     // crypto.randomUUID() rather than Math.random() — this id is only ever
-    // shown locally (nothing is persisted, see the file-level comment
-    // above), but there's no reason to reach for a weaker generator here.
+    // shown locally (nothing is persisted server-side, see the file-level
+    // comment above), but there's no reason to reach for a weaker generator.
     const orderId = "MVBB" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase();
+    saveOrder({
+      id: orderId,
+      customerPhone: profile.phone,
+      items: lineDetails.map((l) => ({
+        gradeId: l.gradeId,
+        name: l.grade.label,
+        qty: l.qty,
+        unit: l.unit,
+        lineTotal: l.lineTotal,
+      })),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      delivery: totals.delivery,
+      total: totals.total,
+      address: { label: address.label, line: address.line, city: address.city, pincode: address.pincode },
+      deliverySlot: slot,
+      payment: paymentLabel(payAtShop, paymentMethod),
+    });
     setPlaced({ orderId });
     clear();
   }
@@ -347,18 +377,5 @@ function PaymentSection({
         No cash on delivery to the driver — &quot;Pay at shop&quot; settles directly with MVBB, not the delivery driver.
       </p>
     </>
-  );
-}
-
-function SummaryRow({ label, value, bold }: Readonly<{ label: string; value: string; bold?: boolean }>) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 0" }}>
-      <span className="gb text-sm" style={{ color: C.muted }}>
-        {label}
-      </span>
-      <span className={bold ? "gm text-base font-bold" : "gb text-sm"} style={{ color: C.ink }}>
-        {value}
-      </span>
-    </div>
   );
 }
