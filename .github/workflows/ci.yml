@@ -90,7 +90,37 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Deploy jobs only run on push to main, after CI passes, and only if
+  # Detects which app(s) actually need a rebuild: an app's own folder
+  # changing, OR any shared package under packages/** changing (since every
+  # app depends on at least one @mvbb/* package — a shared-package change
+  # can affect all three, so it fans out to all of them rather than none).
+  changes:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      admin: ${{ steps.filter.outputs.admin }}
+      customer: ${{ steps.filter.outputs.customer }}
+      driver: ${{ steps.filter.outputs.driver }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'packages/**'
+            admin:
+              - *shared
+              - 'apps/admin/**'
+            customer:
+              - *shared
+              - 'apps/customer/**'
+            driver:
+              - *shared
+              - 'apps/driver/**'
+
+  # Deploy jobs only run on push to main, after CI passes, only if the app
+  # (or a shared package it depends on) actually changed, and only if
   # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
   # Vercel project (Root Directory set per-project to its apps/* folder),
   # deployed to its own *.vercel.app URL (no custom domain configured — see
@@ -101,8 +131,8 @@ jobs:
   # @mvbb/* deps (see root package.json "workspaces"). Which project a
   # given job targets is selected via VERCEL_PROJECT_ID, not by cwd.
   deploy-admin:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,8 +144,8 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-customer:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -127,8 +157,8 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-driver:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.driver == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
