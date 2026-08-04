@@ -48,6 +48,8 @@ export default function LoginPage() {
       phone,
       name: name.trim(),
       accountType,
+      addresses: [],
+      paymentMethods: [],
       ...(accountType === "B2B" ? { businessName: businessName.trim(), isHawker } : {}),
     });
     router.push("/");

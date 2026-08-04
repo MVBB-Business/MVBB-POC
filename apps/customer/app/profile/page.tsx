@@ -6,11 +6,15 @@ import { useEffect, useRef } from "react";
 import { C } from "@mvbb/ui";
 import { useProfile } from "../../lib/profile-context";
 
+const MENU_ITEMS = [
+  { href: "/addresses", label: "Manage addresses", count: (p: { addresses: unknown[] }) => p.addresses.length },
+  { href: "/payment-methods", label: "Payment methods", count: (p: { paymentMethods: unknown[] }) => p.paymentMethods.length },
+] as const;
+
 // Ported from mvbb-app.jsx ProfileScreen (prototype lines ~867-890). The
-// menu list there links to Orders/Wishlist/Payment methods/Billing/Addresses
-// — those screens are follow-up PRs against this same issue and will be
-// added to this menu as they land, rather than linking out to routes that
-// don't exist yet.
+// full menu also lists Orders/Negotiations/Wishlist/Billing — those screens
+// are follow-up PRs against this same issue and will be added to MENU_ITEMS
+// as they land, rather than linking out to routes that don't exist yet.
 export default function ProfilePage() {
   const router = useRouter();
   const { profile, loaded, logout } = useProfile();
@@ -76,6 +80,31 @@ export default function ProfilePage() {
             </p>
           )}
         </div>
+
+        {MENU_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="gb text-sm font-medium"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderRadius: 12,
+              padding: 16,
+              marginTop: 12,
+              background: C.card,
+              border: `1px solid ${C.line}`,
+              color: C.ink,
+              textDecoration: "none",
+            }}
+          >
+            <span>{item.label}</span>
+            <span className="gb text-xs" style={{ color: C.muted }}>
+              {item.count(profile)}
+            </span>
+          </Link>
+        ))}
 
         <a
           href={`https://wa.me/919999999999?text=${encodeURIComponent("Hi MVBB (Lahasun Wala), I need help with my account.")}`}
