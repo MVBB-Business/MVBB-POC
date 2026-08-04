@@ -74,7 +74,12 @@ jobs:
         # npm is the install/build tool for this monorepo. package-lock.json
         # is committed, so `npm ci` gives a deterministic install matching
         # it exactly, failing loudly if it ever drifts out of sync.
-        run: npm ci
+        # --ignore-scripts blocks arbitrary postinstall scripts from
+        # dependencies (supply-chain hardening, flagged by SonarCloud
+        # githubactions:S6505) — verified locally that lint/typecheck/test/
+        # build all still pass without them (esbuild's native-binary
+        # postinstall isn't actually required here).
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
