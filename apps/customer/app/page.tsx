@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { deriveStock } from "@mvbb/inventory";
 import { inr, tierPrice } from "@mvbb/pricing";
 import { C, StockBadge } from "@mvbb/ui";
+import { useCart } from "../lib/cart-context";
 import { useGrades } from "../lib/use-grades";
 
 type SortKey = "bestSeller" | "priceLow" | "priceHigh";
@@ -21,6 +22,7 @@ const SORT_OPTIONS: [SortKey, string][] = [
 // against the live Supabase catalog instead of local seed data.
 export default function HomePage() {
   const { grades, loading, error } = useGrades();
+  const { count } = useCart();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("bestSeller");
   const [category, setCategory] = useState("All");
@@ -49,13 +51,29 @@ export default function HomePage() {
 
   return (
     <main className="mvbb-root" style={{ background: C.paper, minHeight: "100vh" }}>
-      <div style={{ padding: "16px 16px 12px" }}>
-        <p className="gb text-sm" style={{ color: C.muted }}>
-          Namaste 👋
-        </p>
-        <p className="gd text-xl font-bold" style={{ color: C.ink }}>
-          Fresh produce, direct from Guntur
-        </p>
+      <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <p className="gb text-sm" style={{ color: C.muted }}>
+            Namaste 👋
+          </p>
+          <p className="gd text-xl font-bold" style={{ color: C.ink }}>
+            Fresh produce, direct from Guntur
+          </p>
+        </div>
+        <Link
+          href="/cart"
+          className="gb text-sm font-semibold"
+          style={{
+            flexShrink: 0,
+            padding: "8px 14px",
+            borderRadius: 999,
+            background: C.garlic,
+            color: C.gold,
+            textDecoration: "none",
+          }}
+        >
+          Cart{count > 0 ? ` (${count})` : ""}
+        </Link>
       </div>
 
       <div style={{ padding: "0 16px 12px" }}>

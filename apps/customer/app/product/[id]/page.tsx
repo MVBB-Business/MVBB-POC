@@ -25,7 +25,7 @@ const SPEC_ROWS = (g: LiveGrade) =>
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const { grade, loading, error, notFound: gradeNotFound } = useGrade(params.id);
-  const { addToCart } = useCart();
+  const { addToCart, count } = useCart();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -70,9 +70,22 @@ export default function ProductDetailPage() {
 
   return (
     <main style={{ background: C.paper, minHeight: "100vh" }}>
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Link href="/" className="gb text-sm" style={{ color: C.muted }}>
           ← Back
+        </Link>
+        <Link
+          href="/cart"
+          className="gb text-sm font-semibold"
+          style={{
+            padding: "6px 14px",
+            borderRadius: 999,
+            background: C.garlic,
+            color: C.gold,
+            textDecoration: "none",
+          }}
+        >
+          Cart{count > 0 ? ` (${count})` : ""}
         </Link>
       </div>
 
