@@ -29,6 +29,15 @@ export interface Database {
           label: string;
           tagline: string | null;
           description: string | null;
+          quality: string | null;
+          bulb_size: string | null;
+          cloves: string | null;
+          moisture: string | null;
+          shelf_life: string | null;
+          origin: string | null;
+          export_grade: boolean;
+          best_seller: boolean;
+          color: string | null;
           bag_weight_kg: number;
           cost_per_bag: number;
           stock_bags: number;
