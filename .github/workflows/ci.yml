@@ -65,14 +65,16 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         # Using npm workspaces (not pnpm) — pnpm's registry client hit a
         # persistent ERR_INVALID_THIS bug against Vercel's build network
         # (reproduced on both Node 20.x and 24.x, and via corepack too), so
-        # npm is the install/build tool for this monorepo until that's
-        # resolved upstream.
-        run: npm install
+        # npm is the install/build tool for this monorepo. package-lock.json
+        # is committed, so `npm ci` gives a deterministic install matching
+        # it exactly, failing loudly if it ever drifts out of sync.
+        run: npm ci
 
       - name: Lint
         run: npm run lint
