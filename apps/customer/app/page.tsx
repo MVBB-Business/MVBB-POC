@@ -7,6 +7,7 @@ import { inr, tierPrice } from "@mvbb/pricing";
 import { C, StockBadge } from "@mvbb/ui";
 import { useCart } from "../lib/cart-context";
 import { useGrades } from "../lib/use-grades";
+import { useProfile } from "../lib/profile-context";
 
 type SortKey = "bestSeller" | "priceLow" | "priceHigh";
 
@@ -23,6 +24,7 @@ const SORT_OPTIONS: [SortKey, string][] = [
 export default function HomePage() {
   const { grades, loading, error } = useGrades();
   const { count } = useCart();
+  const { profile } = useProfile();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("bestSeller");
   const [category, setCategory] = useState("All");
@@ -60,20 +62,35 @@ export default function HomePage() {
             Fresh produce, direct from Guntur
           </p>
         </div>
-        <Link
-          href="/cart"
-          className="gb text-sm font-semibold"
-          style={{
-            flexShrink: 0,
-            padding: "8px 14px",
-            borderRadius: 999,
-            background: C.garlic,
-            color: C.gold,
-            textDecoration: "none",
-          }}
-        >
-          Cart{count > 0 ? ` (${count})` : ""}
-        </Link>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <Link
+            href={profile ? "/profile" : "/login"}
+            className="gb text-sm font-semibold"
+            style={{
+              padding: "8px 14px",
+              borderRadius: 999,
+              background: C.card,
+              color: C.earth,
+              border: `1px solid ${C.line}`,
+              textDecoration: "none",
+            }}
+          >
+            {profile ? profile.name.split(" ")[0] : "Sign in"}
+          </Link>
+          <Link
+            href="/cart"
+            className="gb text-sm font-semibold"
+            style={{
+              padding: "8px 14px",
+              borderRadius: 999,
+              background: C.garlic,
+              color: C.gold,
+              textDecoration: "none",
+            }}
+          >
+            Cart{count > 0 ? ` (${count})` : ""}
+          </Link>
+        </div>
       </div>
 
       <div style={{ padding: "0 16px 12px" }}>
