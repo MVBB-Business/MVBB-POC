@@ -1,30 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { inr } from "@mvbb/pricing";
 import { C } from "@mvbb/ui";
 import { useCart } from "../../lib/cart-context";
 import { computeTotals, resolveCartLines } from "../../lib/cart-totals";
+import { useProfile } from "../../lib/profile-context";
 import { useGrades } from "../../lib/use-grades";
 
 const SLOTS = ["Anytime", "Morning (8am–12pm)", "Afternoon (12pm–4pm)", "Evening (4pm–8pm)"];
 
-interface Address {
-  label: string;
-  line: string;
-  city: string;
-  pincode: string;
-  phone: string;
-}
-
-const EMPTY_ADDRESS: Address = { label: "", line: "", city: "", pincode: "", phone: "" };
-
-// Ported from mvbb-app.jsx Checkout (prototype lines ~524-573). The prototype
-// picks from `profile.addresses`/`profile.paymentMethods` saved on a user
-// profile — that needs real auth (#5, #14), which isn't built yet, so this
-// takes a single address inline instead of a saved-address list, and offers
-// only "Pay at shop" (saved cards/UPI/bank need the same profile system).
+// Ported from mvbb-app.jsx Checkout (prototype lines ~524-573), now picking
+// from the saved addresses/payment methods added in this PR (profile-context)
+// instead of taking a one-off inline address, matching the prototype more
+// closely. Checkout requires being signed in, since there's nowhere else to
+// keep a saved address for a guest.
 //
 // Placing an order does NOT write to Supabase: `orders` has RLS enabled with
 // zero policies (verified — anon insert is rejected), and it should stay
@@ -35,20 +26,33 @@ const EMPTY_ADDRESS: Address = { label: "", line: "", city: "", pincode: "", pho
 // own non-persistent (browser-local) storage model for Phase 1 demo parity.
 export default function CheckoutPage() {
   const { lines, coupon, clear } = useCart();
+  const { profile } = useProfile();
   const { grades, loading, error } = useGrades();
-  const [address, setAddress] = useState<Address>(EMPTY_ADDRESS);
+  const [addressId, setAddressId] = useState<string | null>(profile?.addresses[0]?.id ?? null);
+  const [paymentId, setPaymentId] = useState<string | null>(
+    profile?.paymentMethods.find((m) => m.isDefault)?.id ?? profile?.paymentMethods[0]?.id ?? null
+  );
+  const [payAtShop, setPayAtShop] = useState(profile ? profile.paymentMethods.length === 0 : false);
   const [slot, setSlot] = useState(SLOTS[0]);
   const [placed, setPlaced] = useState<{ orderId: string } | null>(null);
+
+  // Picks up an address/payment method added via "+ Add new…" and returned
+  // from — those routes navigate back into this same page instance rather
+  // than remounting it, so the useState initializers above only ran once,
+  // before the new entry existed.
+  useEffect(() => {
+    if (!profile) return;
+    if (!addressId && profile.addresses.length > 0) setAddressId(profile.addresses[0].id);
+    if (!payAtShop && !paymentId && profile.paymentMethods.length > 0) {
+      setPaymentId(profile.paymentMethods.find((m) => m.isDefault)?.id ?? profile.paymentMethods[0].id);
+    }
+  }, [profile, addressId, paymentId, payAtShop]);
 
   const lineDetails = useMemo(() => resolveCartLines(lines, grades), [lines, grades]);
   const totals = useMemo(() => computeTotals(lineDetails, coupon), [lineDetails, coupon]);
 
-  const addressComplete = Boolean(address.label && address.line && address.city && address.pincode.length === 6);
-  const canPlace = addressComplete && lineDetails.length > 0;
-
-  function updateAddress<K extends keyof Address>(key: K, value: Address[K]) {
-    setAddress((prev) => ({ ...prev, [key]: value }));
-  }
+  const address = profile?.addresses.find((a) => a.id === addressId) ?? null;
+  const canPlace = Boolean(address) && (payAtShop || Boolean(paymentId)) && lineDetails.length > 0;
 
   function placeOrder() {
     if (!canPlace) return;
@@ -60,32 +64,24 @@ export default function CheckoutPage() {
     clear();
   }
 
-  if (placed) {
+  if (placed) return <OrderPlaced orderId={placed.orderId} slot={slot} />;
+
+  if (!profile) {
     return (
       <main style={{ background: C.paper, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ padding: 24, textAlign: "center", maxWidth: 320 }}>
-          <p className="gd text-2xl font-bold" style={{ color: C.ink, marginBottom: 8 }}>
-            Order placed 🎉
+          <p className="gd text-lg font-bold" style={{ color: C.ink, marginBottom: 8 }}>
+            Sign in to check out
           </p>
-          <p className="gb text-sm" style={{ color: C.muted, marginBottom: 4 }}>
-            Order #{placed.orderId}
-          </p>
-          <p className="gb text-sm" style={{ color: C.muted, marginBottom: 24 }}>
-            Delivery slot: {slot}
+          <p className="gb text-sm" style={{ color: C.muted, marginBottom: 20 }}>
+            Your cart is saved — sign in and come back to finish checking out.
           </p>
           <Link
-            href="/"
+            href="/login"
             className="gb text-sm font-semibold"
-            style={{
-              display: "inline-block",
-              padding: "10px 24px",
-              borderRadius: 999,
-              background: C.garlic,
-              color: C.ivory,
-              textDecoration: "none",
-            }}
+            style={{ display: "inline-block", padding: "10px 24px", borderRadius: 999, background: C.garlic, color: C.ivory, textDecoration: "none" }}
           >
-            Back to shop
+            Sign in
           </Link>
         </div>
       </main>
@@ -127,79 +123,18 @@ export default function CheckoutPage() {
 
       {!loading && !error && lineDetails.length > 0 && (
         <div style={{ padding: "0 16px 16px" }}>
-          <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
-            Deliver to
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-            <Field label="Label" value={address.label} onChange={(v) => updateAddress("label", v)} placeholder="Shop, Warehouse…" />
-            <Field label="Address" value={address.line} onChange={(v) => updateAddress("line", v)} placeholder="Street / locality" />
-            <Field label="City" value={address.city} onChange={(v) => updateAddress("city", v)} placeholder="Guntur" />
-            <Field
-              label="Pincode"
-              value={address.pincode}
-              onChange={(v) => updateAddress("pincode", v.replace(/\D/g, "").slice(0, 6))}
-              placeholder="522001"
-            />
-            <Field
-              label="Contact (optional)"
-              value={address.phone}
-              onChange={(v) => updateAddress("phone", v)}
-              placeholder="+91 98765 43210"
-            />
-          </div>
-
-          <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
-            Delivery time
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-            {SLOTS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSlot(s)}
-                className="gb text-xs font-medium"
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: slot === s ? C.garlic : C.card,
-                  color: slot === s ? C.gold : C.muted,
-                  border: `1px solid ${slot === s ? C.garlic : C.line}`,
-                  cursor: "pointer",
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
-            Payment method
-          </p>
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 8,
-              background: C.card,
-              border: `1px solid ${C.gold}`,
+          <AddressSection addresses={profile.addresses} addressId={addressId} onSelect={setAddressId} />
+          <SlotSection slot={slot} onSelect={setSlot} />
+          <PaymentSection
+            paymentMethods={profile.paymentMethods}
+            paymentId={paymentId}
+            payAtShop={payAtShop}
+            onSelect={(id) => {
+              setPaymentId(id);
+              setPayAtShop(false);
             }}
-          >
-            <div>
-              <p className="gb text-sm font-semibold" style={{ color: C.ink, margin: 0 }}>
-                Pay at shop
-              </p>
-              <p className="gb text-xs" style={{ color: C.muted, margin: 0 }}>
-                Cash, UPI in person, or call to arrange
-              </p>
-            </div>
-          </div>
-          <p className="gb text-xs" style={{ color: C.muted, marginBottom: 20 }}>
-            No cash on delivery to the driver — &quot;Pay at shop&quot; settles directly with MVBB, not the delivery
-            driver. Saved cards/UPI are coming once account login ships.
-          </p>
+            onSelectPayAtShop={() => setPayAtShop(true)}
+          />
 
           <div style={{ borderRadius: 12, padding: 16, border: `1px solid ${C.line}`, background: C.card, marginBottom: 16 }}>
             <SummaryRow label="Subtotal" value={inr(totals.subtotal)} />
@@ -232,30 +167,186 @@ export default function CheckoutPage() {
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
+function OrderPlaced({ orderId, slot }: Readonly<{ orderId: string; slot: string }>) {
+  return (
+    <main style={{ background: C.paper, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ padding: 24, textAlign: "center", maxWidth: 320 }}>
+        <p className="gd text-2xl font-bold" style={{ color: C.ink, marginBottom: 8 }}>
+          Order placed 🎉
+        </p>
+        <p className="gb text-sm" style={{ color: C.muted, marginBottom: 4 }}>
+          Order #{orderId}
+        </p>
+        <p className="gb text-sm" style={{ color: C.muted, marginBottom: 24 }}>
+          Delivery slot: {slot}
+        </p>
+        <Link
+          href="/"
+          className="gb text-sm font-semibold"
+          style={{ display: "inline-block", padding: "10px 24px", borderRadius: 999, background: C.garlic, color: C.ivory, textDecoration: "none" }}
+        >
+          Back to shop
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function AddressSection({
+  addresses,
+  addressId,
+  onSelect,
+}: Readonly<{ addresses: { id: string; label: string; line: string; city: string; pincode: string }[]; addressId: string | null; onSelect: (id: string) => void }>) {
+  return (
+    <>
+      <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
+        Deliver to
+      </p>
+      {addresses.length === 0 && (
+        <p className="gb text-sm" style={{ color: C.muted, marginBottom: 8 }}>
+          No saved address.
+        </p>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+        {addresses.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onSelect(a.id)}
+            className="gb text-sm"
+            style={{
+              textAlign: "left",
+              borderRadius: 12,
+              padding: 12,
+              background: C.card,
+              border: `1px solid ${addressId === a.id ? C.gold : C.line}`,
+              cursor: "pointer",
+            }}
+          >
+            <p className="gb text-sm font-semibold" style={{ color: C.ink, margin: 0 }}>
+              {a.label}
+            </p>
+            <p className="gb text-xs" style={{ color: C.muted, margin: 0 }}>
+              {a.line}, {a.city} – {a.pincode}
+            </p>
+          </button>
+        ))}
+      </div>
+      <Link href="/addresses/new" className="gb text-xs font-semibold" style={{ color: C.goldDark, display: "block", marginBottom: 20 }}>
+        + Add new address
+      </Link>
+    </>
+  );
+}
+
+function SlotSection({ slot, onSelect }: Readonly<{ slot: string; onSelect: (s: string) => void }>) {
+  return (
+    <>
+      <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
+        Delivery time
+      </p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+        {SLOTS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onSelect(s)}
+            className="gb text-xs font-medium"
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              background: slot === s ? C.garlic : C.card,
+              color: slot === s ? C.gold : C.muted,
+              border: `1px solid ${slot === s ? C.garlic : C.line}`,
+              cursor: "pointer",
+            }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function PaymentSection({
+  paymentMethods,
+  paymentId,
+  payAtShop,
+  onSelect,
+  onSelectPayAtShop,
 }: Readonly<{
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  paymentMethods: { id: string; type: string; detail: string; isDefault: boolean }[];
+  paymentId: string | null;
+  payAtShop: boolean;
+  onSelect: (id: string) => void;
+  onSelectPayAtShop: () => void;
 }>) {
   return (
-    <label style={{ display: "block" }}>
-      <span className="gb text-xs" style={{ color: C.muted, display: "block", marginBottom: 4 }}>
-        {label}
-      </span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="gm text-sm"
-        style={{ width: "100%", borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.line}`, background: C.paper, color: C.ink }}
-      />
-    </label>
+    <>
+      <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>
+        Payment method
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+        {paymentMethods.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onSelect(m.id)}
+            className="gb text-sm"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              textAlign: "left",
+              borderRadius: 12,
+              padding: 12,
+              background: C.card,
+              border: `1px solid ${!payAtShop && paymentId === m.id ? C.gold : C.line}`,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ color: C.ink }}>
+              {m.type === "card" || m.type === "bank" ? `${m.type} •••• ${m.detail}` : m.detail}
+            </span>
+            {m.isDefault && (
+              <span className="gb text-xs font-medium" style={{ padding: "2px 8px", borderRadius: 999, background: C.paper, color: C.goldDark }}>
+                Default
+              </span>
+            )}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={onSelectPayAtShop}
+          className="gb text-sm"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            textAlign: "left",
+            borderRadius: 12,
+            padding: 12,
+            background: C.card,
+            border: `1px solid ${payAtShop ? C.gold : C.line}`,
+            cursor: "pointer",
+          }}
+        >
+          <span className="gb text-sm font-semibold" style={{ color: C.ink }}>
+            Pay at shop
+          </span>
+          <span className="gb text-xs" style={{ color: C.muted }}>
+            Cash, UPI in person, or call to arrange
+          </span>
+        </button>
+      </div>
+      <Link href="/payment-methods/new" className="gb text-xs font-semibold" style={{ color: C.goldDark, display: "block" }}>
+        + Add payment method
+      </Link>
+      <p className="gb text-xs" style={{ color: C.muted, margin: "8px 0 20px" }}>
+        No cash on delivery to the driver — &quot;Pay at shop&quot; settles directly with MVBB, not the delivery driver.
+      </p>
+    </>
   );
 }
 
