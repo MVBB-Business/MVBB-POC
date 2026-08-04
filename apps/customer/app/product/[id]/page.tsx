@@ -7,37 +7,56 @@ import { deriveStock } from "@mvbb/inventory";
 import { inr, tierPrice } from "@mvbb/pricing";
 import { C, StockBadge } from "@mvbb/ui";
 import { useCart } from "../../../lib/cart-context";
-import { getSeedGrade } from "../../../lib/seed-grades";
+import { useGrade, type LiveGrade } from "../../../lib/use-grades";
 
-const SPEC_ROWS = (g: ReturnType<typeof getSeedGrade>) =>
-  g
-    ? ([
-        ["Quality", g.quality],
-        ["Bulb size", g.bulbSize],
-        ["Cloves", g.cloves],
-        ["Moisture", g.moisture],
-        ["Shelf life", g.shelfLife],
-        ["Origin", g.origin],
-      ] as const)
-    : [];
+const SPEC_ROWS = (g: LiveGrade) =>
+  [
+    ["Quality", g.quality],
+    ["Bulb size", g.bulbSize],
+    ["Cloves", g.cloves],
+    ["Moisture", g.moisture],
+    ["Shelf life", g.shelfLife],
+    ["Origin", g.origin],
+  ] as const;
 
 // Ported from mvbb-app.jsx ProductDetail (prototype lines ~431-486).
 // Wishlist, negotiate, and notify-me-when-in-stock are left out — they need
 // the login/profile system, which isn't built yet.
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const grade = getSeedGrade(params.id);
+  const { grade, loading, error, notFound: gradeNotFound } = useGrade(params.id);
   const { addToCart } = useCart();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
-  if (!grade) notFound();
+  if (gradeNotFound) notFound();
+
+  if (loading) {
+    return (
+      <main style={{ background: C.paper, minHeight: "100vh", padding: 16 }}>
+        <p className="gb text-sm" style={{ color: C.muted }}>
+          Loading…
+        </p>
+      </main>
+    );
+  }
+
+  if (error || !grade) {
+    return (
+      <main style={{ background: C.paper, minHeight: "100vh", padding: 16 }}>
+        <p className="gb text-sm" style={{ color: C.rust }}>
+          Couldn&apos;t load this product: {error}
+        </p>
+      </main>
+    );
+  }
 
   const stock = deriveStock(grade.stockBags);
   const unit = tierPrice(grade, qty);
 
+  const gradeId = grade.id;
   function handleAddToCart() {
-    addToCart(grade!.id, qty);
+    addToCart(gradeId, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 2200);
   }
@@ -93,7 +112,7 @@ export default function ProductDetailPage() {
           {grade.tagline}
         </p>
         <p className="gb text-sm" style={{ color: C.earth, marginBottom: 20, lineHeight: 1.6 }}>
-          {grade.desc}
+          {grade.description}
         </p>
 
         <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 8 }}>

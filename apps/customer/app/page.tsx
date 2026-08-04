@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { deriveStock } from "@mvbb/inventory";
 import { inr, tierPrice } from "@mvbb/pricing";
 import { C, StockBadge } from "@mvbb/ui";
-import { SEED_GRADES } from "../lib/seed-grades";
+import { useGrades } from "../lib/use-grades";
 
 type SortKey = "bestSeller" | "priceLow" | "priceHigh";
 
@@ -17,19 +17,21 @@ const SORT_OPTIONS: [SortKey, string][] = [
 
 // Ported from mvbb-app.jsx HomeScreen (prototype lines ~368-431). Wishlist
 // is left for a follow-up PR (needs the login/profile system) — this slice
-// covers browse/search/filter/sort plus navigation into product detail.
+// covers browse/search/filter/sort plus navigation into product detail,
+// against the live Supabase catalog instead of local seed data.
 export default function HomePage() {
+  const { grades, loading, error } = useGrades();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("bestSeller");
   const [category, setCategory] = useState("All");
 
   const categories = useMemo(
-    () => ["All", ...Array.from(new Set(SEED_GRADES.map((g) => g.category)))],
-    []
+    () => ["All", ...Array.from(new Set(grades.map((g) => g.category)))],
+    [grades]
   );
 
   const list = useMemo(() => {
-    let result = SEED_GRADES.filter(
+    let result = grades.filter(
       (g) =>
         (category === "All" || g.category === category) &&
         (g.label.toLowerCase().includes(q.toLowerCase()) ||
@@ -43,7 +45,7 @@ export default function HomePage() {
       result = [...result].sort((a, b) => Number(b.bestSeller) - Number(a.bestSeller));
     }
     return result;
-  }, [q, sort, category]);
+  }, [grades, q, sort, category]);
 
   return (
     <main className="mvbb-root" style={{ background: C.paper, minHeight: "100vh" }}>
@@ -119,6 +121,18 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: "0 16px 24px" }}>
+        {loading && (
+          <p className="gb text-sm text-center" style={{ color: C.muted, padding: "32px 0" }}>
+            Loading products…
+          </p>
+        )}
+        {error && (
+          <p className="gb text-sm text-center" style={{ color: C.rust, padding: "32px 0" }}>
+            Couldn&apos;t load products: {error}
+          </p>
+        )}
+        {!loading && !error && (
+          <>
         <p className="gb text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted, marginBottom: 12 }}>
           {category === "All" ? "All products" : category} ({list.length})
         </p>
@@ -191,6 +205,8 @@ export default function HomePage() {
           <p className="gb text-sm text-center" style={{ color: C.muted, padding: "32px 0" }}>
             No products match &quot;{q}&quot;
           </p>
+        )}
+          </>
         )}
       </div>
     </main>
