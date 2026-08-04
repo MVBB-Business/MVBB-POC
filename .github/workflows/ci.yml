@@ -4,6 +4,24 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Deploys are manual-only (see deploy-* jobs below) to avoid burning
+  # Vercel build minutes on every merge while we're still iterating fast
+  # pre-pilot. Trigger from the Actions tab: Run workflow, pick which
+  # app(s) to deploy (defaults to all three).
+  workflow_dispatch:
+    inputs:
+      deploy_admin:
+        description: "Deploy admin"
+        type: boolean
+        default: true
+      deploy_customer:
+        description: "Deploy customer"
+        type: boolean
+        default: true
+      deploy_driver:
+        description: "Deploy driver"
+        type: boolean
+        default: true
 
 jobs:
   # Every PR title and every commit message on the branch must start with a
@@ -70,40 +88,13 @@ jobs:
   # rejects CI-driven analysis while Automatic Analysis is on for the
   # project). See the "SonarCloud Code Analysis" check on each PR.
 
-  # Detects which app(s) actually need a rebuild: an app's own folder
-  # changing, OR any shared package under packages/** changing (since every
-  # app depends on at least one @mvbb/* package — a shared-package change
-  # can affect all three, so it fans out to all of them rather than none).
-  changes:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    outputs:
-      admin: ${{ steps.filter.outputs.admin }}
-      customer: ${{ steps.filter.outputs.customer }}
-      driver: ${{ steps.filter.outputs.driver }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
-      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.2
-        id: filter
-        with:
-          filters: |
-            shared: &shared
-              - 'packages/**'
-            admin:
-              - *shared
-              - 'apps/admin/**'
-            customer:
-              - *shared
-              - 'apps/customer/**'
-            driver:
-              - *shared
-              - 'apps/driver/**'
-
-  # Deploy jobs only run on push to main, after CI passes, only if the app
-  # (or a shared package it depends on) actually changed, and only if
-  # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
-  # Vercel project (Root Directory set per-project to its apps/* folder),
-  # deployed to its own *.vercel.app URL (no custom domain configured — see
+  # Deploy jobs are manual-only (workflow_dispatch), not triggered by push
+  # to main — we're pre-pilot with no real traffic yet, so auto-deploying
+  # Vercel builds on every merge was pure build-minute cost with no
+  # benefit. Trigger a deploy explicitly from the Actions tab when you
+  # actually want something live. Each app is an independent Vercel
+  # project (Root Directory set per-project to its apps/* folder), deployed
+  # to its own *.vercel.app URL (no custom domain configured — see
   # MVBB-Roadmap for when that changes).
   #
   # Deploy MUST run from the repo root, not from inside apps/<name> — Vercel
@@ -111,8 +102,8 @@ jobs:
   # @mvbb/* deps (see root package.json "workspaces"). Which project a
   # given job targets is selected via VERCEL_PROJECT_ID, not by cwd.
   deploy-admin:
-    needs: [ci, changes]
-    if: needs.changes.outputs.admin == 'true'
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_admin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
@@ -124,8 +115,8 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-customer:
-    needs: [ci, changes]
-    if: needs.changes.outputs.customer == 'true'
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_customer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
@@ -137,8 +128,8 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-driver:
-    needs: [ci, changes]
-    if: needs.changes.outputs.driver == 'true'
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_driver
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
