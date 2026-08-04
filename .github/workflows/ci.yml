@@ -6,12 +6,45 @@ on:
     branches: [main]
 
 jobs:
+  # Every PR title and every commit message on the branch must start with a
+  # ticket prefix like "[MVBB-1] " — mirrors the [MVBB-N] convention used on
+  # GitHub issue titles. Required check on main (see branch protection) — a
+  # PR that doesn't follow this cannot merge.
+  ticket-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title starts with a ticket ID
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "$PR_TITLE" | grep -qE '^\[MVBB-[0-9]+\] ' || {
+            echo "::error::PR title must start with a ticket ID like '[MVBB-1] '. Got: $PR_TITLE"
+            exit 1
+          }
+
+      - name: Check every commit message starts with a ticket ID
+        run: |
+          base="origin/${{ github.event.pull_request.base.ref }}"
+          missing=0
+          while IFS= read -r line; do
+            if ! echo "$line" | grep -qE '^\[MVBB-[0-9]+\] '; then
+              echo "::error::Commit must start with a ticket ID like '[MVBB-1] ': $line"
+              missing=1
+            fi
+          done < <(git log --no-merges --format=%s "$base".."${{ github.event.pull_request.head.sha }}")
+          exit $missing
+
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
 
@@ -32,7 +65,42 @@ jobs:
       - name: Test
         run: npm run test
 
-  # Deploy jobs only run on push to main, after CI passes, and only if
+  # SonarCloud runs via its own native GitHub App integration (Automatic
+  # Analysis), not a job here — running both at once conflicts (SonarCloud
+  # rejects CI-driven analysis while Automatic Analysis is on for the
+  # project). See the "SonarCloud Code Analysis" check on each PR.
+
+  # Detects which app(s) actually need a rebuild: an app's own folder
+  # changing, OR any shared package under packages/** changing (since every
+  # app depends on at least one @mvbb/* package — a shared-package change
+  # can affect all three, so it fans out to all of them rather than none).
+  changes:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      admin: ${{ steps.filter.outputs.admin }}
+      customer: ${{ steps.filter.outputs.customer }}
+      driver: ${{ steps.filter.outputs.driver }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'packages/**'
+            admin:
+              - *shared
+              - 'apps/admin/**'
+            customer:
+              - *shared
+              - 'apps/customer/**'
+            driver:
+              - *shared
+              - 'apps/driver/**'
+
+  # Deploy jobs only run on push to main, after CI passes, only if the app
+  # (or a shared package it depends on) actually changed, and only if
   # VERCEL_TOKEN is configured as a repo secret. Each app is an independent
   # Vercel project (Root Directory set per-project to its apps/* folder),
   # deployed to its own *.vercel.app URL (no custom domain configured — see
@@ -43,11 +111,11 @@ jobs:
   # @mvbb/* deps (see root package.json "workspaces"). Which project a
   # given job targets is selected via VERCEL_PROJECT_ID, not by cwd.
   deploy-admin:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/admin to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -56,11 +124,11 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-customer:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/customer to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -69,11 +137,11 @@ jobs:
         run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   deploy-driver:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, changes]
+    if: needs.changes.outputs.driver == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
       - name: Deploy apps/driver to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
